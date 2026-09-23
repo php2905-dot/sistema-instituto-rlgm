@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema de Chamadas - Instituto RLGM</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+</head>
+<body>
+
+  <!-- MODAL DE CONFIRMAÇÃO CUSTOMIZADO -->
+  <div id="customConfirmModal" class="modal hidden">
+    <div class="modal-content confirm-modal-box">
+      <h3 id="confirmModalTitle">Confirmação</h3>
+      <p id="confirmModalMessage">Tem certeza que deseja realizar esta ação?</p>
+      <div class="modal-actions confirm-modal-actions">
+        <button type="button" id="btnConfirmNo" class="btn-secondary flex-1">Não</button>
+        <button type="button" id="btnConfirmYes" class="btn-primary flex-1">Sim</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- OVERLAY DE CARREGAMENTO (LOADING) -->
+  <div id="loadingOverlay" class="hidden loading-overlay">
+    <div class="loading-box">
+      <div class="spinner"></div>
+      <span>A processar...</span>
+    </div>
+  </div>
+
+  <!-- MODAL: REDEFINIR SENHA OBRIGATÓRIA -->
+  <div id="forceResetModal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Redefinição de Senha Obrigatória</h2>
+        <button id="btnCloseForceResetModal" class="close-btn">&times;</button>
+      </div>
+      <p>Por motivos de segurança, você precisa cadastrar uma nova senha no seu primeiro acesso.</p>
+      <form id="forceResetForm">
+        <div class="form-group">
+          <label>Nova Senha</label>
+          <div class="password-row">
+            <input type="password" id="newPassword" placeholder="Mínimo 6 caracteres" required class="flex-1">
+            <button type="button" id="toggleNewPassword" class="btn-secondary">👁️</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Confirmar Nova Senha</label>
+          <div class="password-row">
+            <input type="password" id="confirmPassword" placeholder="Repita a nova senha" required class="flex-1">
+            <button type="button" id="toggleConfirmPassword" class="btn-secondary">👁️</button>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button type="submit" class="btn-primary">Salvar Nova Senha</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: NOVA CHAMADA -->
+  <div id="callModal" class="modal hidden">
+    <div class="modal-content modal-large">
+      <div class="modal-header">
+        <h2>Nova Chamada</h2>
+        <button id="btnCloseCallModal" class="close-btn">&times;</button>
+      </div>
+      <form id="callForm">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Turma</label>
+            <select id="modalTurmaSelect" required></select>
+          </div>
+          <div class="form-group">
+            <label>Matéria / Disciplina</label>
+            <select id="modalMateriaInput" required>
+              <option value="" disabled selected>Selecione uma matéria</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Data(s) da Aula</label>
+          <input type="text" id="modalDataInput" placeholder="Selecione uma ou mais datas" required>
+        </div>
+
+        <div class="form-group">
+          <label>Lista de Alunos</label>
+          <div id="studentInputsList"></div>
+          <button type="button" id="btnAddStudentRow" class="btn-secondary btn-margin-top">+ Adicionar Aluno</button>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" id="btnCancelCallModal" class="btn-secondary">Cancelar</button>
+          <button type="submit" class="btn-primary">Criar Chamada</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: USUÁRIO -->
+  <div id="userModal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="modalUserTitle">Novo Usuário</h2>
+        <button id="btnCloseUserModal" class="close-btn">&times;</button>
+      </div>
+      <form id="userForm">
+        <div class="form-group">
+          <label>Nome Completo</label>
+          <input type="text" id="modalUserName" required>
+        </div>
+        <div class="form-group">
+          <label>E-mail</label>
+          <input type="email" id="modalUserEmail" required>
+        </div>
+        <div class="form-group">
+          <label>Senha</label>
+          <div class="password-row">
+            <input type="password" id="modalUserPassword" placeholder="Deixe em branco para manter a atual" class="flex-1">
+            <button type="button" id="toggleUserPassword" class="btn-secondary">👁️</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Perfil de Acesso</label>
+          <select id="modalUserRole">
+            <option value="Professor">Professor</option>
+            <option value="Administrador">Administrador</option>
+          </select>
+        </div>
+        <div class="form-group checkbox-group">
+          <label>
+            <input type="checkbox" id="modalUserForceReset">
+            Exigir troca de senha no próximo login
+          </label>
+        </div>
+        <div class="modal-actions">
+          <button type="button" id="btnCancelUserModal" class="btn-secondary">Cancelar</button>
+          <button type="submit" class="btn-primary">Salvar Usuário</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: DISCIPLINA -->
+  <div id="disciplinaModal" class="modal hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Nova Disciplina</h2>
+        <button id="btnCloseDisciplinaModal" class="close-btn">&times;</button>
+      </div>
+      <form id="disciplinaForm">
+        <div class="form-group">
+          <label>Nome da Disciplina</label>
+          <input type="text" id="modalDisciplinaNome" placeholder="Ex: Teologia Sistemática" required>
+        </div>
+        <div class="modal-actions">
+          <button type="button" id="btnCancelDisciplinaModal" class="btn-secondary">Cancelar</button>
+          <button type="submit" class="btn-primary">Salvar Disciplina</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- TELA DE LOGIN -->
+  <div id="loginView" class="login-screen">
+    <div id="loginContainer" class="login-box">
+      <h2>Portal Instituto RLGM</h2>
+      <p>Acesse com seu login (ex: nome.sobrenome) e senha</p>
+      <form id="loginForm">
+        <div class="form-group">
+          <label>Login de Acesso</label>
+          <input type="text" id="loginEmail" required placeholder="nome.sobrenome">
+        </div>
+        <div class="form-group">
+          <label>Senha</label>
+          <input type="password" id="loginPassword" required placeholder="******">
+        </div>
+        <button type="submit" class="btn-primary style-full">Entrar</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- LAYOUT PRINCIPAL -->
+  <div id="appLayout" class="app-layout hidden">
+    
+    <aside class="sidebar">
+      <div class="brand">
+        <h2>Instituto - RLGM</h2>
+        <p>Sistema Escolar</p>
+      </div>
+
+      <div class="user-profile">
+        <strong id="sidebarUserName">Usuário</strong>
+        <span id="sidebarUserRole">Carregando...</span>
+      </div>
+      
+      <nav class="top-nav">
+        <button class="nav-btn active" data-view="inicio">Início</button>
+        <button class="nav-btn" data-view="chamadas">Chamadas</button>
+        <button class="nav-btn" data-view="dashboardAlunos">Dashboard de Alunos</button>
+        <button class="nav-btn admin-only" data-view="usuarios">Gestão / Usuários</button>
+      </nav>
+
+      <button id="btnOpenChangePassword" class="btn-secondary btn-change-password">🔑 Alterar Senha</button>
+
+      <div class="sidebar-footer">
+        <button id="logoutBtn" class="btn-danger full-width">Sair do Sistema</button>
+      </div>
+    </aside>
+
+    <main class="main-content">
+
+      <!-- VISÃO: INÍCIO -->
+      <section id="inicioView" class="view-section">
+        <div class="page-header">
+          <div class="page-title">
+            <p>INSTITUTO RLGM</p>
+            <h1>Painel Principal</h1>
+          </div>
+          <button id="btnNewCallHeader" class="btn-primary">+ Nova Chamada</button>
+        </div>
+
+        <div class="section-block section-spacing-top">
+          <div class="section-header">
+            <h2>Turmas do Período</h2>
+          </div>
+          <div id="classGrid" class="class-grid"></div>
+        </div>
+
+        <div class="section-block section-spacing-top">
+          <div class="section-header">
+            <h2>Chamadas Recentes</h2>
+          </div>
+          <div id="recentCallsList" class="calls-list"></div>
+        </div>
+      </section>
+
+      <!-- VISÃO: CHAMADAS -->
+      <section id="chamadasView" class="view-section hidden">
+        <div class="page-header">
+          <div class="page-title">
+            <p>INSTITUTO RLGM</p>
+            <h1>Listagem de Chamadas</h1>
+          </div>
+          <div class="header-actions-row">
+            
+            <div id="exportDropdownContainer" class="export-dropdown-wrapper">
+              <button id="btnExportMenu" class="btn-secondary export-btn-flex">
+                📥 Exportar ▼
+              </button>
+              
+              <div id="exportMenuBox" class="hidden export-dropdown-box">
+                <button id="optExcel" class="export-menu-item">📊 Exportar para Excel</button>
+                <button id="optPDF" class="export-menu-item export-item-border">📄 Exportar para PDF</button>
+              </div>
+            </div>
+
+            <button id="btnNewCallCallsView" class="btn-primary">+ Nova Chamada</button>
+          </div>
+        </div>
+
+        <div class="filter-bar card-box filter-bar-custom">
+          <div class="filter-flex-group">
+            <label class="filter-label">Pesquisar Chamada:</label>
+            <input type="text" id="searchCallInput" placeholder="Pesquisar por disciplina, professor ou aluno..." class="filter-input">
+          </div>
+          <div>
+            <label class="filter-label">Filtrar por Turma:</label>
+            <select id="filterClassSelect" class="filter-select"></select>
+          </div>
+        </div>
+
+        <div id="callsListContainer" class="calls-list"></div>
+      </section>
+
+      <!-- VISÃO: DASHBOARD DE ALUNOS -->
+      <section id="dashboardAlunosView" class="view-section hidden">
+        <div class="page-header">
+          <div class="page-title">
+            <p>INSTITUTO RLGM</p>
+            <h1>Dashboard de Alunos</h1>
+          </div>
+          
+          <div id="exportDashDropdownContainer" class="export-dropdown-wrapper">
+            <button id="btnExportDashMenu" class="btn-secondary export-btn-flex">
+              📥 Exportar ▼
+            </button>
+            
+            <div id="exportDashMenuBox" class="hidden export-dropdown-box">
+              <button id="optDashExcel" class="export-menu-item">📊 Exportar para Excel</button>
+              <button id="optDashPDF" class="export-menu-item export-item-border">📄 Exportar para PDF</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-info">
+              <span class="stat-label">TOTAL DE ALUNOS REGISTADOS</span>
+              <h2 class="stat-value" id="dashTotalAlunos">0</h2>
+            </div>
+            <div class="stat-icon icon-blue">👥</div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-info">
+              <span class="stat-label">APROVADOS</span>
+              <h2 class="stat-value" id="dashTotalAprovados">0</h2>
+            </div>
+            <div class="stat-icon icon-green">✅</div>
+          </div>
+
+          <div class="stat-card">
+            <div class="stat-info">
+              <span class="stat-label">REPROVADOS</span>
+              <h2 class="stat-value" id="dashTotalReprovados">0</h2>
+            </div>
+            <div class="stat-icon icon-yellow">⚠️</div>
+          </div>
+        </div>
+
+        <div class="section-block section-spacing">
+          <div class="section-header">
+            <h2>Histórico e Desempenho dos Alunos</h2>
+          </div>
+          <div class="card-box">
+            <div class="table-wrapper">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Nome do Aluno</th>
+                    <th>Turma</th>
+                    <th>Disciplina</th>
+                    <th>Faltas</th>
+                    <th>Nota Final</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="dashAlunosTbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VISÃO: DETALHES / FREQUÊNCIA DA CHAMADA -->
+      <section id="detalhesChamadaView" class="view-section hidden">
+        <div class="page-header">
+          <button id="btnBackToCalls" class="btn-secondary">&larr; Voltar</button>
+          <div class="page-title">
+            <h1 id="callDetailTitle">Detalhes da Chamada</h1>
+            <p id="callDetailSubtitle">Subtítulo</p>
+          </div>
+          <div>
+            <button id="btnSaveCallDetails" class="btn-primary">Salvar Alterações</button>
+            <button id="btnFinishCall" class="btn-success">Finalizar Chamada</button>
+          </div>
+        </div>
+
+        <div class="tabs-header">
+          <button class="tab-btn active" data-tab="tabFrequencia">Frequência</button>
+          <button class="tab-btn" data-tab="tabNotas">Notas & Avaliação</button>
+        </div>
+
+        <div id="tabFrequencia" class="tab-content card-box">
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead id="attendanceThead"></thead>
+              <tbody id="attendanceTbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="tabNotas" class="tab-content card-box hidden">
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th class="col-width-50">#</th>
+                  <th>Nome do Aluno</th>
+                  <th class="col-width-150">Nota Final (0 a 10)</th>
+                  <th class="col-width-180">Situação Final</th>
+                </tr>
+              </thead>
+              <tbody id="gradesTbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- VISÃO: GESTÃO / USUÁRIOS E DISCIPLINAS -->
+      <section id="usuariosView" class="view-section hidden">
+        <div class="page-header">
+          <div class="page-title">
+            <p>ADMINISTRAÇÃO</p>
+            <h1>Gestão do Sistema</h1>
+          </div>
+          <!-- BOTÕES DE BACKUP: EXPORTAR E IMPORTAR (COM INPUT FILE OCULTO) -->
+          <div style="display: flex; gap: 10px;">
+            <button id="btnExportBackup" class="btn-secondary">💾 Exportar Backup (JSON)</button>
+            <button id="btnImportBackup" class="btn-primary">📂 Importar Backup (JSON)</button>
+            <input type="file" id="inputImportBackupFile" accept=".json" class="hidden">
+          </div>
+        </div>
+
+        <div class="tabs-header">
+          <button class="tab-btn active" data-tab="tabUsuarios">Usuários</button>
+          <button class="tab-btn" data-tab="tabDisciplinas">Disciplinas</button>
+        </div>
+
+        <div id="tabUsuarios" class="tab-content card-box">
+          <div class="tab-header-row">
+            <h3>Usuários Cadastrados</h3>
+            <button id="btnNewUser" class="btn-primary">+ Novo Usuário</button>
+          </div>
+
+          <div class="user-filter-bar">
+            <div class="filter-flex-group">
+              <input type="text" id="searchUserInput" placeholder="Pesquisar por nome ou e-mail..." class="filter-input-full">
+            </div>
+            <div>
+              <select id="filterRoleSelect" class="filter-select-box">
+                <option value="all">Todos os Perfis</option>
+                <option value="admin">Administrador</option>
+                <option value="professor">Professor</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Nome</th>
+                  <th>E-mail</th>
+                  <th>Login de Acesso</th>
+                  <th>Perfil</th>
+                  <th>Troca de Senha Exigida</th>
+                  <th class="col-width-120">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="usersTbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="tabDisciplinas" class="tab-content card-box hidden">
+          <div class="tab-header-row">
+            <h3>Disciplinas Cadastradas</h3>
+            <button id="btnNewDisciplina" class="btn-primary">+ Nova Disciplina</button>
+          </div>
+
+          <!-- CAIXA DE ESTATÍSTICA (TOTAL DE DISCIPLINAS) -->
+          <div class="stats-grid" style="margin-bottom: 20px;">
+            <div class="stat-card" style="padding: 16px 20px;">
+              <div class="stat-info">
+                <span class="stat-label">TOTAL DE DISCIPLINAS</span>
+                <h2 class="stat-value" id="totalDisciplinasCount">0</h2>
+              </div>
+              <div class="stat-icon icon-blue">📚</div>
+            </div>
+          </div>
+
+          <!-- BARRA DE PESQUISA DE DISCIPLINAS -->
+          <div class="user-filter-bar">
+            <div class="filter-flex-group">
+              <input type="text" id="searchDisciplinaInput" placeholder="Pesquisar por nome da disciplina..." class="filter-input-full">
+            </div>
+          </div>
+
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Nome da Disciplina</th>
+                  <th class="col-width-100 text-align-right">Ações</th>
+                </tr>
+              </thead>
+              <tbody id="disciplinasTbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <div id="toastNotification" class="toast"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
