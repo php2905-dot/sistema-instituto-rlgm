@@ -1708,15 +1708,3 @@ async function importarBackupJSON(file) {
   };
   reader.readAsText(file);
 }
-
-
-// Verifica se já existe um utilizador admin criado no localStorage
-if (!localStorage.getItem('adminCriado')) {
-    const usuarioAdmin = {
-        usuario: 'administrador',
-        senha: '123456' // Na versão final, pode alterar para a senha desejada
-    };
-    // Guarda na lista de utilizadores ou no localStorage
-    localStorage.setItem('usuarioAdmin', JSON.stringify(usuarioAdmin));
-    localStorage.setItem('adminCriado', 'true');
-}
